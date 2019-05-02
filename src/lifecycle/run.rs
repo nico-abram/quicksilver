@@ -1,5 +1,6 @@
 use crate::{
     Result,
+    backend::Backend,
     geom::Vector,
     input::{ButtonState, MouseButton, KEY_LIST, LINES_TO_PIXELS},
     lifecycle::{Application, Event, State, Settings, Window},
@@ -39,7 +40,7 @@ fn run_impl<T: State, F: FnOnce()->Result<T>>(title: &str, size: Vector, setting
         eprintln!("Warning: no asset directory found. Please place all your assets inside a directory called 'static' so they can be loaded");
         eprintln!("Execution continuing, but any asset-not-found errors are likely due to the lack of a 'static' directory.")
     }
-    let (mut window, event_loop) = Window::build(title, size, settings)?;
+    let (window, event_loop) = Window::build(title, size, settings)?;
     #[cfg(feature = "sounds")]
     crate::sound::Sound::initialize();
     let mut app: Application<T> = Application::new(window, f)?;
@@ -47,7 +48,7 @@ fn run_impl<T: State, F: FnOnce()->Result<T>>(title: &str, size: Vector, setting
     event_loop.run(move |event, _, mut ctrl| {
         match event {
             WinitEvent::NewEvents(winit::event::StartCause::Init) => {
-                app.window.backend().context.window().request_redraw();
+                app.window.backend().window().request_redraw();
             }
             WinitEvent::WindowEvent { event: WindowEvent::Resized(size), .. } => {
                 let size: Vector = size.into();
@@ -60,7 +61,7 @@ fn run_impl<T: State, F: FnOnce()->Result<T>>(title: &str, size: Vector, setting
                 if let Err(error) = tick(&mut app) {
                     T::handle_error(error);
                 }
-                app.window.backend().context.window().request_redraw();
+                app.window.backend().window().request_redraw();
             }
             WinitEvent::WindowEvent { event, .. } => {
                 if let Some(evt) = window_event(&app.window, event, &mut ctrl) {
@@ -68,6 +69,10 @@ fn run_impl<T: State, F: FnOnce()->Result<T>>(title: &str, size: Vector, setting
                 }
             }
             _ => ()
+        }
+
+        if !app.window.is_running() {
+            *ctrl = ControlFlow::Exit;
         }
     })
 }

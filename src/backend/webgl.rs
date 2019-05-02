@@ -4,14 +4,15 @@ use crate::{
     geom::{Rectangle, Vector},
     error::QuicksilverError,
     graphics::{BlendMode, Color, GpuTriangle, Image, ImageScaleStrategy, PixelFormat, Surface, Vertex},
-    input::MouseCursor,
+};
+use winit::{
+    event_loop::EventLoop,
+    platform::stdweb::WindowExtStdweb,
+    window::{Window as WinitWindow, WindowBuilder}
 };
 use std::mem::size_of;
 use stdweb::{
-    web::{
-        html_element::CanvasElement,
-        TypedArray
-    },
+    web::TypedArray,
     unstable::TryInto
 };
 use webgl_stdweb::{
@@ -22,10 +23,9 @@ use webgl_stdweb::{
     WebGLTexture,
     WebGLUniformLocation
 };
-use stdweb::web::document;
 
 pub struct WebGLBackend {
-    canvas: CanvasElement,
+    window: WinitWindow,
     gl_ctx: gl,
     texture: Option<u32>,
     vertices: Vec<f32>,
@@ -39,8 +39,6 @@ pub struct WebGLBackend {
     ebo: WebGLBuffer, 
     texture_location: Option<WebGLUniformLocation>,
     texture_mode: u32,
-    initial_width: u32,
-    initial_height: u32,
     textures: Vec<Option<WebGLTexture>>,
 }
 
@@ -87,9 +85,11 @@ fn try_opt<T>(opt: Option<T>, operation: &str) -> Result<T> {
 }
 
 impl Backend for WebGLBackend {
-    type Platform = CanvasElement;
+    unsafe fn new(window: WindowBuilder, events: &EventLoop<()>, texture_mode: ImageScaleStrategy, _multisample: bool) -> Result<WebGLBackend> {
+        let window = window.build(events)?;
 
-    unsafe fn new(canvas: CanvasElement, texture_mode: ImageScaleStrategy, _multisample: bool) -> Result<WebGLBackend> {
+        let canvas = window.canvas();
+
         let gl_ctx: gl = match canvas.get_context() {
             Ok(ctx) => ctx,
             _ => return Err(QuicksilverError::ContextError("Could not create WebGL2 context".to_owned()))
@@ -120,10 +120,9 @@ impl Backend for WebGLBackend {
         gl_ctx.attach_shader(&shader, &fragment);
         gl_ctx.link_program(&shader);
         gl_ctx.use_program(Some(&shader));
-        let initial_width = canvas.width();
-        let initial_height = canvas.height();
+
         Ok(WebGLBackend {
-            canvas,
+            window,
             gl_ctx,
             texture: None,
             vertices: Vec::with_capacity(1024),
@@ -133,8 +132,6 @@ impl Backend for WebGLBackend {
             shader, fragment, vertex, vbo, ebo, 
             texture_location: None,
             texture_mode,
-            initial_width,
-            initial_height,
             textures: Vec::new(),
         })
     }
@@ -328,31 +325,10 @@ impl Backend for WebGLBackend {
         (Vector::new(width, height), buffer)
     }
 
-    fn set_cursor(&mut self, cursor: MouseCursor) {
-        js!( @{&self.canvas}.style.cursor = @{cursor.into_css_style()} );
-    }
-
-    fn set_title(&mut self, title: &str) {
-        document().set_title(title);
-    }
-
     fn present(&self) -> Result<()> { Ok(()) }
 
-    fn set_fullscreen(&mut self, fullscreen: bool) -> Option<Vector> {
-        let (width, height) = if fullscreen {
-            let window = stdweb::web::window();
-            (window.inner_width() as u32, window.inner_height() as u32)
-        } else {
-            (self.initial_width, self.initial_height)
-        };
-        self.canvas.set_width(width);
-        self.canvas.set_height(height);
-        Some(Vector::new(width, height))
-    }
-
-    fn resize(&mut self, size: Vector) {
-        self.canvas.set_width(size.x as u32);
-        self.canvas.set_height(size.y as u32);
+    fn window(&self) -> &WinitWindow {
+        &self.window
     }
 }
 

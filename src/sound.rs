@@ -138,13 +138,14 @@ impl Sound {
         Ok(())
     }
     
-    #[cfg(not(target_arch="wasm32"))]
     //Play a silent sound so rodio startup doesn't interfere with application
     //Unfortunately this means even apps that don't use sound eat the startup penalty but it's not a
     //huge one
     pub(crate) fn initialize() {
-        if let Some(ref device) = rodio::default_output_device() {
-            rodio::play_raw(device, rodio::source::Empty::new())
+        #[cfg(not(target_arch="wasm32"))] {
+            if let Some(ref device) = rodio::default_output_device() {
+                rodio::play_raw(device, rodio::source::Empty::new())
+            }
         }
     }
 }

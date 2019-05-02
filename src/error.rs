@@ -1,4 +1,4 @@
-#[cfg(all(not(target_arch = "wasm32"), feature = "gamepads"))]
+#[cfg(feature = "gilrs")]
 use gilrs;
 #[cfg(not(target_arch = "wasm32"))]
 use glutin;
@@ -161,15 +161,26 @@ fn creation_to_str(err: &glutin::CreationError) -> String {
         }
         glutin::CreationError::NoAvailablePixelFormat => "No available pixel format".to_owned(),
         glutin::CreationError::PlatformSpecific(string) => string.to_owned(),
-        glutin::CreationError::Window(error) => match error {
-            WindowCreationError::OsError(string) => string.to_owned(),
-            WindowCreationError::NotSupported => {
-                "Window creation failed: not supported".to_owned()
-            }
-        },
+        glutin::CreationError::Window(error) => window_creation_to_str(error),
         glutin::CreationError::CreationErrors(errors) => {
             format!("{:?}", errors)
         }
+    }
+}
+
+fn window_creation_to_str(error: &WindowCreationError) -> String {
+    match error {
+        WindowCreationError::OsError(string) => string.to_owned(),
+        WindowCreationError::NotSupported => {
+            "Window creation failed: not supported".to_owned()
+        }
+    }
+}
+
+#[doc(hidden)]
+impl From<WindowCreationError> for QuicksilverError {
+    fn from(err: WindowCreationError) -> QuicksilverError {
+        QuicksilverError::ContextError(window_creation_to_str(&err))
     }
 }
 

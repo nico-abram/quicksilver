@@ -2,13 +2,14 @@ use crate::{
     Result,
     geom::{Rectangle, Vector},
     graphics::{Background::Col, BlendMode, Color, GpuTriangle, Image, ImageScaleStrategy, PixelFormat, Surface, Vertex},
-    input::MouseCursor,
+};
+use winit::{
+    event_loop::EventLoop,
+    window::{Window as WinitWindow, WindowBuilder}
 };
 
 pub(crate) trait Backend {
-    type Platform;
-
-    unsafe fn new(platform: Self::Platform, texture_mode: ImageScaleStrategy, multisample: bool) -> Result<Self> where Self: Sized;
+    unsafe fn new(window: WindowBuilder, event: &EventLoop<()>, texture_mode: ImageScaleStrategy, multisample: bool) -> Result<Self> where Self: Sized;
 
     unsafe fn set_blend_mode(&mut self, blend: BlendMode);
     unsafe fn reset_blend_mode(&mut self);
@@ -31,11 +32,7 @@ pub(crate) trait Backend {
 
     unsafe fn screenshot(&self, format: PixelFormat) -> (Vector, Vec<u8>);
 
-    fn set_cursor(&mut self, cursor: MouseCursor);
-    fn set_title(&mut self, title: &str);
-
-    fn set_fullscreen(&mut self, fullscreen: bool) -> Option<Vector>;
-    fn resize(&mut self, size: Vector);
+    fn window(&self) -> &WinitWindow;
 
     unsafe fn clear_color(&mut self, color: Color, letterbox: Color) -> Result<()> {
         self.clear(letterbox);

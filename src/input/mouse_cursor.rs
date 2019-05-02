@@ -81,51 +81,6 @@ pub enum MouseCursor {
 }
 
 impl MouseCursor {
-    #[cfg(target_arch = "wasm32")]
-    #[inline]
-    pub(crate) fn into_css_style(self) -> &'static str {
-        match self {
-            MouseCursor::None => "none",
-            MouseCursor::Default => "auto",
-            MouseCursor::Crosshair => "crosshair",
-            MouseCursor::Hand => "pointer",
-            MouseCursor::Arrow => "default",
-            MouseCursor::Move => "move",
-            MouseCursor::Text => "text",
-            MouseCursor::Wait => "wait",
-            MouseCursor::Help => "help",
-            MouseCursor::Progress => "progress",
-
-            MouseCursor::NotAllowed => "not-allowed",
-            MouseCursor::ContextMenu => "context-menu",
-            MouseCursor::Cell => "cell",
-            MouseCursor::VerticalText => "vertical-text",
-            MouseCursor::Alias => "alias",
-            MouseCursor::Copy => "copy",
-            MouseCursor::NoDrop => "no-drop",
-            MouseCursor::Grab => "grab",
-            MouseCursor::Grabbing => "grabbing",
-            MouseCursor::AllScroll => "all-scroll",
-            MouseCursor::ZoomIn => "zoom-in",
-            MouseCursor::ZoomOut => "zoom-out",
-
-            MouseCursor::EResize => "e-resize",
-            MouseCursor::NResize => "n-resize",
-            MouseCursor::NeResize => "ne-resize",
-            MouseCursor::NwResize => "nw-resize",
-            MouseCursor::SResize => "s-resize",
-            MouseCursor::SeResize => "se-resize",
-            MouseCursor::SwResize => "sw-resize",
-            MouseCursor::WResize => "w-resize",
-            MouseCursor::EwResize => "ew-resize",
-            MouseCursor::NsResize => "ns-resize",
-            MouseCursor::NeswResize => "nesw-resize",
-            MouseCursor::NwseResize => "nwse-resize",
-            MouseCursor::ColResize => "col-resize",
-            MouseCursor::RowResize => "row-resize",
-        }
-    }
-
     #[inline]
     pub(crate) fn into_gl_cursor(self) -> Option<WinitMouseCursor> {
         match self {

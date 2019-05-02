@@ -5,6 +5,10 @@ use crate::{
     graphics::{BlendMode, Color, GpuTriangle, Image, ImageScaleStrategy, PixelFormat, Surface, Vertex},
     input::MouseCursor
 };
+use winit::{
+    event_loop::EventLoop,
+    window::{Window as WinitWindow, WindowBuilder}
+};
 use glutin::{PossiblyCurrent, WindowedContext, dpi::LogicalSize};
 use std::{
     ffi::CString,
@@ -66,9 +70,21 @@ fn format_gl(format: PixelFormat) -> u32 {
 }
 
 impl Backend for GL3Backend {
-    type Platform = WindowedContext<PossiblyCurrent>;
+    unsafe fn new(builder: WindowBuilder, events: &EventLoop<()>, texture_mode: ImageScaleStrategy, multisample: bool) -> Result<GL3Backend> {
+        let context = glutin::ContextBuilder::new()
+            .with_vsync(settings.vsync)
+            .with_multisampling(settings.multisampling.unwrap_or(0));
+        let gl_window = context.build_windowed(window, &events)?;
+        let context = unsafe {
+            let gl_window = match gl_window.make_current() {
+                Ok(window) => window,
+                Err((_, err)) => Err(err)?
+            };
+            gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
 
-    unsafe fn new(context: WindowedContext<PossiblyCurrent>, texture_mode: ImageScaleStrategy, multisample: bool) -> Result<GL3Backend> {
+            gl_window
+        };
+
         let texture_mode = match texture_mode {
             ImageScaleStrategy::Pixelate => gl::NEAREST,
             ImageScaleStrategy::Blur => gl::LINEAR
@@ -324,35 +340,12 @@ impl Backend for GL3Backend {
         (Vector::new(width, height), buffer)
     }
 
-    fn set_cursor(&mut self, cursor: MouseCursor) {
-        match cursor.into_gl_cursor() {
-            Some(gl_cursor) => {
-                self.context.window().hide_cursor(false);
-                self.context.window().set_cursor(gl_cursor);
-            }
-            None => self.context.window().hide_cursor(true),
-        }
-    }
-
-    fn set_title(&mut self, title: &str) {
-        self.context.window().set_title(title);
-    }
-
     fn present(&self) -> Result<()> {
         Ok(self.context.swap_buffers()?)
     }
 
-    fn set_fullscreen(&mut self, fullscreen: bool) -> Option<Vector> {
-        self.context.window().set_fullscreen(if fullscreen {
-            Some(self.context.window().get_primary_monitor())
-        } else {
-            None
-        });
-        None
-    }
-
-    fn resize(&mut self, size: Vector) {
-        self.context.window().set_inner_size(size.into());
+    fn window(&self) -> &WinitWindow {
+        self.context.window()
     }
 }
 

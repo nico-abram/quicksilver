@@ -9,6 +9,7 @@ use crate::{
 use image::{
     DynamicImage, RgbImage, RgbaImage,
 };
+use winit::{self, event_loop::EventLoop, /*Icon*/};
 #[cfg(feature = "gilrs")] use {
     crate::input::{GAMEPAD_BUTTON_LIST, GILRS_GAMEPAD_LIST},
     gilrs::{
@@ -16,23 +17,6 @@ use image::{
         ev::state::AxisData
     }
 };
-#[cfg(target_arch = "wasm32")]
-use {
-    crate::error::QuicksilverError,
-    stdweb::{
-        web::{
-            IElement, INode, document,
-            html_element::CanvasElement,
-        },
-        unstable::TryInto
-    }
-};
-#[cfg(not(target_arch = "wasm32"))]
-use {
-    gl,
-    glutin::{self, event_loop::EventLoop/*, Icon*/}
-};
-
 
 ///The window currently in use
 pub struct Window {
@@ -57,8 +41,22 @@ pub struct Window {
 }
 
 impl Window {
-    pub(crate) fn build_agnostic(user_size: Vector, actual_size: Vector, settings: Settings) -> Result<Window> {
-        let screen_region = settings.resize.resize(user_size, actual_size);
+    pub(crate) fn build(title: &str, user_size: Vector, settings: Settings) -> Result<(Window, EventLoop<()>)> {
+        let events = winit::event_loop::EventLoop::new();
+        let mut window = winit::window::WindowBuilder::new()
+            .with_title(title)
+            .with_dimensions(user_size.into());
+        /*if let Some(path) = settings.icon_path {
+            window = window.with_window_icon(Some(Icon::from_path(path)?));
+        }*/
+        if let Some(v) = settings.min_size {
+            window = window.with_min_dimensions(v.into());
+        }
+        if let Some(v) = settings.max_size {
+            window = window.with_max_dimensions(v.into());
+        };
+        unsafe { set_instance(BackendImpl::new(window, &events, settings.scale, settings.multisampling != None)?) };
+        let screen_region = settings.resize.resize(user_size, user_size); // TODO: is this required?
         let view = View::new(Rectangle::new_sized(screen_region.size()));
         let mut window = Window {
             gamepads: Vec::new(),
@@ -67,9 +65,7 @@ impl Window {
             gilrs: Gilrs::new()?,
             resize: settings.resize,
             screen_region,
-            keyboard: Keyboard {
-                keys: [ButtonState::NotPressed; 256],
-            },
+            keyboard: Keyboard { keys: [ButtonState::NotPressed; 256] },
             mouse: Mouse {
                 pos: Vector::ZERO,
                 buttons: [ButtonState::NotPressed; 3],
@@ -86,77 +82,9 @@ impl Window {
             running: true,
             fullscreen: false
         };
-        window.set_cursor(if settings.show_cursor {
-            MouseCursor::Default
-        } else {
-            MouseCursor::None
-        });
+        window.set_cursor(if settings.show_cursor { MouseCursor::Default } else { MouseCursor::None });
         window.set_fullscreen(settings.fullscreen);
-        Ok(window)
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn build(title: &str, user_size: Vector, settings: Settings) -> Result<(Window, EventLoop<()>)> {
-        let events = glutin::event_loop::EventLoop::new();
-        let mut window = glutin::window::WindowBuilder::new()
-            .with_title(title)
-            .with_dimensions(user_size.into());
-        if let Some(path) = settings.icon_path {
-            //window = window.with_window_icon(Some(Icon::from_path(path)?));
-        }
-        if let Some(v) = settings.min_size {
-            window = window.with_min_dimensions(v.into());
-        }
-        if let Some(v) = settings.max_size {
-            window = window.with_max_dimensions(v.into());
-        };
-        let context = glutin::ContextBuilder::new()
-            .with_vsync(settings.vsync)
-            .with_multisampling(settings.multisampling.unwrap_or(0));
-        let gl_window = context.build_windowed(window, &events)?;
-        let gl_window = unsafe {
-            let gl_window = match gl_window.make_current() {
-                Ok(window) => window,
-                Err((_, err)) => Err(err)?
-            };
-            gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
-
-            gl_window
-        };
-        unsafe { set_instance(BackendImpl::new(gl_window, settings.scale, settings.multisampling != None)?) };
-        let window = Window::build_agnostic(user_size, user_size, settings)?;
         Ok((window, events))
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn build(title: &str, size: Vector, settings: Settings) -> Result<(Window, CanvasElement)> {
-        let document = document();
-        if let Some(path) = settings.icon_path {
-            let head = document.head().ok_or(QuicksilverError::ContextError("Failed to find head node".to_owned()))?;
-            let element = document
-                .create_element("link")
-                .map_err(|_| QuicksilverError::ContextError("Failed to create link element".to_owned()))?;
-            element.set_attribute("rel", "shortcut icon")
-                .map_err(|_| QuicksilverError::ContextError("Failed to create favicon element".to_owned()))?;
-            element.set_attribute("type", "image/png")
-                .map_err(|_| QuicksilverError::ContextError("Failed to create favicon element".to_owned()))?;
-            element.set_attribute("href", path)
-                .map_err(|_| QuicksilverError::ContextError("Failed to create favicon element".to_owned()))?;
-            head.append_child(&element);
-        }
-        let element = document
-            .create_element("canvas")
-            .map_err(|_| QuicksilverError::ContextError("Failed to create canvas element".to_owned()))?;
-        let canvas: CanvasElement = element.try_into()
-            .map_err(|_| QuicksilverError::ContextError("Failed to create canvas element".to_owned()))?;
-        let body = document.body().ok_or(QuicksilverError::ContextError("Failed to find body node".to_owned()))?;
-        body.append_child(&canvas);
-        canvas.set_width(size.x as u32);
-        canvas.set_height(size.y as u32);
-        unsafe { set_instance(BackendImpl::new(canvas.clone(), settings.scale, settings.multisampling != None)?) };
-        let mut window = Window::build_agnostic(size, size, settings)?;
-        window.set_title(title);
-        Ok((window, canvas))
     }
 
     pub(crate) fn process_event(&mut self, event: &Event) {
@@ -456,12 +384,19 @@ impl Window {
 
     /// Set current cursor
     pub fn set_cursor(&mut self, cursor: MouseCursor) {
-        self.backend().set_cursor(cursor);
+        let window = self.backend().window();
+        match cursor.into_gl_cursor() {
+            Some(gl_cursor) => {
+                window.hide_cursor(false);
+                window.set_cursor(gl_cursor);
+            }
+            None => window.hide_cursor(true),
+        };
     }
 
     /// Set the title of the window (or tab on mobile)
     pub fn set_title(&mut self, title: &str) {
-        self.backend().set_title(title);
+        self.backend().window().set_title(title);
     }
 
     /// Get if the application is currently fullscreen
@@ -471,17 +406,19 @@ impl Window {
 
     /// Set if the application is currently fullscreen
     pub fn set_fullscreen(&mut self, fullscreen: bool) {
+        let window = self.backend().window();
         self.fullscreen = fullscreen;
-        let size = self.backend().set_fullscreen(fullscreen);
-        if let Some(size) = size {
-            self.adjust_size(size);
-        }
+        window.set_fullscreen(if fullscreen {
+            Some(window.get_primary_monitor())
+        } else {
+            None
+        });
     }
 
     /// Resize the window to the given size
     pub fn set_size(&mut self, size: impl Into<Vector>) {
-        let size = size.into();
-        self.backend().resize(size);
+        let size: Vector = size.into();
+        self.backend().window().set_inner_size(size.into());
         self.adjust_size(size);
     }
 
