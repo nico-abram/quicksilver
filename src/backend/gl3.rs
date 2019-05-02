@@ -14,7 +14,7 @@ use std::{
 };
 
 pub struct GL3Backend {
-    context: WindowedContext<PossiblyCurrent>,
+    pub(crate) context: WindowedContext<PossiblyCurrent>,
     texture: u32,
     vertices: Vec<f32>,
     indices: Vec<u32>, 

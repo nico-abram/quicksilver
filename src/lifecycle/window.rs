@@ -30,7 +30,7 @@ use {
 #[cfg(not(target_arch = "wasm32"))]
 use {
     gl,
-    glutin::{self, EventsLoop, Icon}
+    glutin::{self, event_loop::EventLoop/*, Icon*/}
 };
 
 
@@ -96,13 +96,13 @@ impl Window {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn build(title: &str, user_size: Vector, settings: Settings) -> Result<(Window, EventsLoop)> {
-        let events = glutin::EventsLoop::new();
-        let mut window = glutin::WindowBuilder::new()
+    pub(crate) fn build(title: &str, user_size: Vector, settings: Settings) -> Result<(Window, EventLoop<()>)> {
+        let events = glutin::event_loop::EventLoop::new();
+        let mut window = glutin::window::WindowBuilder::new()
             .with_title(title)
             .with_dimensions(user_size.into());
         if let Some(path) = settings.icon_path {
-            window = window.with_window_icon(Some(Icon::from_path(path)?));
+            //window = window.with_window_icon(Some(Icon::from_path(path)?));
         }
         if let Some(v) = settings.min_size {
             window = window.with_min_dimensions(v.into());

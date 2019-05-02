@@ -18,5 +18,3 @@ pub use self::{
     window::Window,
 };
 pub(crate) use self::application::Application;
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) use self::event::EventProvider;
