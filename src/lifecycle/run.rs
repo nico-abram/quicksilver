@@ -48,6 +48,7 @@ fn run_impl<T: State, F: FnOnce()->Result<T>>(title: &str, size: Vector, setting
     event_loop.run(move |event, _, mut ctrl| {
         match event {
             WinitEvent::NewEvents(winit::event::StartCause::Init) => {
+                *ctrl = ControlFlow::Wait;
                 app.window.backend().window().request_redraw();
             }
             WinitEvent::WindowEvent { event: WindowEvent::Resized(size), .. } => {
