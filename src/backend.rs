@@ -1,7 +1,8 @@
 use crate::{
     Result,
     geom::{Rectangle, Vector},
-    graphics::{Background::Col, BlendMode, Color, GpuTriangle, Image, ImageScaleStrategy, PixelFormat, Surface, Vertex},
+    graphics::{Background::Col, BlendMode, Color, GpuTriangle, Image, PixelFormat, Surface, Vertex},
+    lifecycle::Settings,
 };
 use winit::{
     event_loop::EventLoop,
@@ -9,7 +10,7 @@ use winit::{
 };
 
 pub(crate) trait Backend {
-    unsafe fn new(window: WindowBuilder, event: &EventLoop<()>, texture_mode: ImageScaleStrategy, multisample: bool) -> Result<Self> where Self: Sized;
+    unsafe fn new(builder: WindowBuilder, events: &EventLoop<()>, setting: &Settings) -> Result<Self> where Self: Sized;
 
     unsafe fn set_blend_mode(&mut self, blend: BlendMode);
     unsafe fn reset_blend_mode(&mut self);

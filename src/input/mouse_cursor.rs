@@ -1,4 +1,4 @@
-use winit::window::MouseCursor as WinitMouseCursor;
+use winit::window::CursorIcon as WinitMouseCursor;
 
 /// Mouse cursor styles
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]

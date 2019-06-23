@@ -1,7 +1,7 @@
 [package]
 name = "quicksilver"
 description = "A simple game framework for 2D games in pure Rust"
-version = "0.3.11"
+version = "0.3.15"
 authors = ["Ryan Goldstein <ryanisaacg@gmail.com>"]
 categories = ["game-engines"]
 homepage = "https://ryanisaacg.github.io/quicksilver"
@@ -36,24 +36,23 @@ lyon = { version = "0.13", features = ["extra"], optional = true }
 rand = { version = "0.6", features = ["stdweb"] }
 serde = "1.0"
 serde_derive = "1.0"
-nalgebra = { version = "0.17", features = ["stdweb"], optional = true }
-ncollide2d = { version = "0.18", optional = true }
+nalgebra = { version = "0.18", features = ["stdweb"], optional = true }
+ncollide2d = { version = "0.19", optional = true }
 immi = { version = "1.0", optional = true }
 rusttype = { version = "0.7", optional = true }
 serde_json = { version = "1.0", optional = true }
 
 [dev-dependencies]
-alga = "0.8"
+alga = "0.9"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 dirs = { version = "1.0", optional = true }
 gl = "0.11"
-winit = { path = "../../clones/winit", features = []}
-glutin = { path = "../../clones/glutin/glutin" }
+winit = "0.20.0-alpha1"
+glutin = "0.22.0-alpha1"
 rodio = { version = "0.8", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-winit = { path = "../../clones/winit", features = ["stdweb"] }
 stdweb = "0.4.12"
 webgl_stdweb = "0.3"
 base64 = "0.10"

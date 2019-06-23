@@ -3,7 +3,7 @@ use crate::{
     backend::{Backend, ImageData, SurfaceData, VERTEX_SIZE},
     geom::{Rectangle, Vector},
     graphics::{BlendMode, Color, GpuTriangle, Image, ImageScaleStrategy, PixelFormat, Surface, Vertex},
-    input::MouseCursor
+    lifecycle::Settings,
 };
 use winit::{
     event_loop::EventLoop,
@@ -70,22 +70,19 @@ fn format_gl(format: PixelFormat) -> u32 {
 }
 
 impl Backend for GL3Backend {
-    unsafe fn new(builder: WindowBuilder, events: &EventLoop<()>, texture_mode: ImageScaleStrategy, multisample: bool) -> Result<GL3Backend> {
+    unsafe fn new(builder: WindowBuilder, events: &EventLoop<()>, settings: &Settings) -> Result<GL3Backend> {
         let context = glutin::ContextBuilder::new()
             .with_vsync(settings.vsync)
             .with_multisampling(settings.multisampling.unwrap_or(0));
-        let gl_window = context.build_windowed(window, &events)?;
-        let context = unsafe {
-            let gl_window = match gl_window.make_current() {
-                Ok(window) => window,
-                Err((_, err)) => Err(err)?
-            };
-            gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
+        let gl_window = context.build_windowed(builder, &events)?;
 
-            gl_window
+        let context = match gl_window.make_current() {
+            Ok(window) => window,
+            Err((_, err)) => Err(err)?
         };
+        gl::load_with(|symbol| context.context().get_proc_address(symbol) as *const _);
 
-        let texture_mode = match texture_mode {
+        let texture_mode = match settings.scale {
             ImageScaleStrategy::Pixelate => gl::NEAREST,
             ImageScaleStrategy::Blur => gl::LINEAR
         };
@@ -107,7 +104,7 @@ impl Backend for GL3Backend {
             gl::ONE_MINUS_SRC_ALPHA,
         );
         gl::Enable(gl::BLEND);
-        if multisample {
+        if settings.multisampling != None {
             gl::Enable(gl::MULTISAMPLE);
         }
         let vertex = gl::CreateShader(gl::VERTEX_SHADER);
@@ -271,6 +268,7 @@ impl Backend for GL3Backend {
         gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, width as i32, 
                         height as i32, 0, format, gl::UNSIGNED_BYTE, data);
         gl::GenerateMipmap(gl::TEXTURE_2D);
+        gl::BindTexture(gl::TEXTURE_2D, 0);
         Ok(ImageData { id, width, height })
     }
 
@@ -289,6 +287,7 @@ impl Backend for GL3Backend {
         gl::BindFramebuffer(gl::FRAMEBUFFER, surface.framebuffer);
         gl::FramebufferTexture(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, image.get_id(), 0);
         gl::DrawBuffers(1, &gl::COLOR_ATTACHMENT0 as *const u32);
+        gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         Ok(surface)
     }
 
@@ -314,7 +313,7 @@ impl Backend for GL3Backend {
 
     unsafe fn set_viewport(&mut self, area: Rectangle) where Self: Sized {
         let size: LogicalSize = area.size().into();
-        let dpi = self.context.window().get_hidpi_factor();
+        let dpi = self.context.window().hidpi_factor();
         self.context.resize(size.to_physical(dpi));
         let dpi = dpi as f32;
         gl::Viewport(

@@ -1,7 +1,23 @@
 # Changelog
 
 ## In-development
+
+## 0.3.15
+- Fix an issue with the viewport in `Surface::render_to()`
+- Fix a GL error in `Image::new_null()` for the WebGL backend
+- Fix a JavaScript error for WebGL backend in Firefox
+- Unbind newly created FBOs and textures to prevent GL errors and unwanted behaviours
+
+## 0.3.14
+- Documentation fixes in src/lib.rs
+
+## 0.3.13
+- Allow any type that is `Into<Background>` to be passed into `draw` and `draw_ex`
+- Update docs for `save` and `load`
+
+## 0.3.12
 - Updated glutin to 0.21
+- Expand the Event::Typed to include punctuation
 
 ## 0.3.11
 - Add support for lyon's StrokeTessellator

@@ -45,17 +45,17 @@ impl Window {
         let events = winit::event_loop::EventLoop::new();
         let mut window = winit::window::WindowBuilder::new()
             .with_title(title)
-            .with_dimensions(user_size.into());
+            .with_inner_size(user_size.into());
         /*if let Some(path) = settings.icon_path {
             window = window.with_window_icon(Some(Icon::from_path(path)?));
         }*/
         if let Some(v) = settings.min_size {
-            window = window.with_min_dimensions(v.into());
+            window = window.with_min_inner_size(v.into());
         }
         if let Some(v) = settings.max_size {
-            window = window.with_max_dimensions(v.into());
+            window = window.with_max_inner_size(v.into());
         };
-        unsafe { set_instance(BackendImpl::new(window, &events, settings.scale, settings.multisampling != None)?) };
+        unsafe { set_instance(BackendImpl::new(window, &events, &settings)?) };
         let screen_region = settings.resize.resize(user_size, user_size); // TODO: is this required?
         let view = View::new(Rectangle::new_sized(screen_region.size()));
         let mut window = Window {
@@ -304,13 +304,13 @@ impl Window {
     }
 
     /// Draw a Drawable to the window, which will be finalized on the next flush
-    pub fn draw(&mut self, draw: &impl Drawable, bkg: Background) {
-        self.draw_ex(draw, bkg, Transform::IDENTITY, 0);
+    pub fn draw<'a>(&'a mut self, draw: &impl Drawable, bkg: impl Into<Background<'a>>) {
+        self.draw_ex(draw, bkg.into(), Transform::IDENTITY, 0);
     }
 
     /// Draw a Drawable to the window with more options provided (draw exhaustive)
-    pub fn draw_ex(&mut self, draw: &impl Drawable, bkg: Background, trans: Transform, z: impl Scalar) {
-        draw.draw(&mut self.mesh, bkg, trans, z);
+    pub fn draw_ex<'a>(&'a mut self, draw: &impl Drawable, bkg: impl Into<Background<'a>>, trans: Transform, z: impl Scalar) {
+        draw.draw(&mut self.mesh, bkg.into(), trans, z);
     }
 
     /// The mesh the window uses to draw
@@ -387,10 +387,10 @@ impl Window {
         let window = self.backend().window();
         match cursor.into_gl_cursor() {
             Some(gl_cursor) => {
-                window.hide_cursor(false);
-                window.set_cursor(gl_cursor);
+                window.set_cursor_visible(false);
+                window.set_cursor_icon(gl_cursor);
             }
-            None => window.hide_cursor(true),
+            None => window.set_cursor_visible(true),
         };
     }
 
@@ -409,7 +409,7 @@ impl Window {
         let window = self.backend().window();
         self.fullscreen = fullscreen;
         window.set_fullscreen(if fullscreen {
-            Some(window.get_primary_monitor())
+            Some(window.primary_monitor())
         } else {
             None
         });
