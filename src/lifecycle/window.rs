@@ -387,10 +387,10 @@ impl Window {
         let window = self.backend().window();
         match cursor.into_gl_cursor() {
             Some(gl_cursor) => {
-                window.set_cursor_visible(false);
+                window.set_cursor_visible(true);
                 window.set_cursor_icon(gl_cursor);
             }
-            None => window.set_cursor_visible(true),
+            None => window.set_cursor_visible(false),
         };
     }
 
